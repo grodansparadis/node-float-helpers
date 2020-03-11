@@ -32,6 +32,6 @@
 const floatHelpers = require('./build/Release/floathelpers.node');
 
 console.log('addon',floatHelpers);
-console.log(floatHelpers.hello())
+console.log(floatHelpers.hello());
 
 module.exports = floatHelpers;
