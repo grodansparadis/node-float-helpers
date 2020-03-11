@@ -56,7 +56,8 @@ namespace floathelper {
         @param size Size of buffer. Must be >= eight bytes.
         @return Pointer to buf on success, NULL otherwise.
     */
-    uint8_t * double2mem(double value, uint8_t *buf, size_t size);
+    uint8_t *
+    double2mem(double value, uint8_t* buf, size_t size);
 
     /*!
         Convert four bytes in a buffer to a floating point single 
@@ -83,18 +84,22 @@ namespace floathelper {
 
         @param buf Pointer to memory buffer
         @param size Size of memory buffer (1/2/3/4/5/6/7/8)
+        @param bSwap Swap result before returning means this
+                        is a biog endian machine.
         @return Double created from buffer
     */
-    double memint2double(uint8_t *buf, size_t size);
+    double memint2double(uint8_t *buf, size_t size, bool bSwap = false);
 
     /*!
         Convert 8/16/24/32/40/48/56/64 bit unsigned integer to double
 
         @param buf Pointer to memory buffer
         @param size Size of memory buffer (1/2/3/4/5/6/7/8)
+        @param bSwap Swap result before returning means this
+                        is a biog endian machine.
         @return Double created from buffer
     */
-    double memuint2double(uint8_t *buf, size_t size);
+    double memuint2double(uint8_t *buf, size_t size, bool bSwap = false);
 
     // ------------------------------------------------------------------------
 
@@ -109,4 +114,5 @@ namespace floathelper {
 
     Napi::String HelloWrapped(const Napi::CallbackInfo &info);
     Napi::Object Init(Napi::Env env, Napi::Object exports);
+
 } // namespace floathelper

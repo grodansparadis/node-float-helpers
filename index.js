@@ -27,11 +27,9 @@
 // SOFTWARE.
 //
 
-#define _POSIX
+"use strict";
 
-const floatHelpers = require('./build/Release/floathelpers.node');
-
-console.log('addon',floatHelpers);
-console.log(floatHelpers.hello());
+const floatHelpers = require('bindings')('floathelpers');
+//const floatHelpers = require('./build/Release/floathelpers.node');
 
 module.exports = floatHelpers;

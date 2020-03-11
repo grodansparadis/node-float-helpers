@@ -32,6 +32,27 @@
 
 #include <algorithm>
 #include <string>
+#include <climits>
+
+// https://stackoverflow.com/questions/105252/how-do-i-convert-between-big-endian-and-little-endian-values-in-c
+template <typename T>
+    T swap_endian(T u)
+    {
+        static_assert (CHAR_BIT == 8, "CHAR_BIT != 8");
+
+        union
+        {
+            T u;
+            unsigned char u8[sizeof(T)];
+        } source, dest;
+
+        source.u = u;
+
+        for (size_t k = 0; k < sizeof(T); k++)
+            dest.u8[k] = source.u8[sizeof(T) - k - 1];
+
+        return dest.u;
+    }
 
 std::string
 floathelper::hello()
@@ -58,7 +79,7 @@ floathelper::mem2double(uint8_t* buf)
 //
 
 uint8_t *
-double2mem(double value, uint8_t* buf, size_t size)
+floathelper::double2mem(double value, uint8_t* buf, size_t size)
 {
     if ( nullptr == buf) {
         return NULL;
@@ -79,7 +100,7 @@ double2mem(double value, uint8_t* buf, size_t size)
 //
 
 float
-mem2float(uint8_t* buf)
+floathelper::mem2float(uint8_t* buf)
 {
     if ( nullptr == buf) {
         return 0;
@@ -93,7 +114,7 @@ mem2float(uint8_t* buf)
 //
 
 uint8_t *
-float2mem(float value, uint8_t* buf, size_t size)
+floathelper::float2mem(float value, uint8_t* buf, size_t size)
 {
     if ( nullptr == buf) {
         return NULL;
@@ -113,7 +134,8 @@ float2mem(float value, uint8_t* buf, size_t size)
 // memint2double
 //
 
-double memint2double(uint8_t *buf, size_t size)
+double 
+floathelper::memint2double(uint8_t *buf, size_t size, bool bSwap)
 {
     bool bNegative = false;
     uint8_t wrkbuf[8];
@@ -131,23 +153,34 @@ double memint2double(uint8_t *buf, size_t size)
     // Check if sign bit is set
     if ( *buf & 0x80) {
         bNegative = true;
-        *buf |= 0x7f;   // Reset sign bit
+        memset(wrkbuf,0xff,sizeof(wrkbuf));
     }
 
-    memcpy( wrkbuf + (8-size), buf, size);
+    memcpy( wrkbuf /* + (8-size) */, buf, size);
 
-    if ( bNegative ) {
-        wrkbuf[0] |= 0x80; // Set sign bit
+    // if ( bNegative ) {
+    //     if ( bSwap ) {
+    //         wrkbuf[0] |= 0x80; // Set sign bit
+    //     }
+    //     else {
+    //         wrkbuf[7] |= 0x80; // Set sign bit
+    //     }
+    // }
+
+    int64_t val = *((int64_t *)wrkbuf);
+    if ( bSwap ) {
+        val = swap_endian<int64_t>(val);
     }
 
-    return (double)((int64_t)*wrkbuf);
+    return (double)val;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // memuint2double
 //
 
-double memuint2double(uint8_t *buf, size_t size)
+double 
+floathelper::memuint2double(uint8_t *buf, size_t size, bool bSwap)
 {
     uint8_t wrkbuf[8];
 
@@ -160,10 +193,14 @@ double memuint2double(uint8_t *buf, size_t size)
     }
 
     memset(wrkbuf, 0, sizeof(wrkbuf));
+    memcpy( wrkbuf, buf, size);
 
-    memcpy( wrkbuf + (8-size), buf, size);
+    uint64_t val = *((uint64_t *)wrkbuf);
+    if ( bSwap ) {
+        val = swap_endian<uint64_t>(val);
+    }
 
-    return (double)((uint64_t)*wrkbuf);
+    return (double)val;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -193,9 +230,9 @@ floathelper::convertMem2Double(const Napi::CallbackInfo& info)
         }
     }
 
-    Napi::Number returnValue = Napi::Number::New(env, floathelper::mem2double(buf));
+    Napi::Number rv = Napi::Number::New(env, floathelper::mem2double(buf));
 
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,17 +254,19 @@ floathelper::convertDouble2Mem(const Napi::CallbackInfo& info)
     uint8_t buf[8];
     memset(buf,0,sizeof(buf));
     
-    if ( nullptr == floathelper::double2mem(value,buf,sizeof(buf)) ) {
+    double dbl = value.DoubleValue();
+    uint8_t *pp = floathelper::double2mem( dbl, buf, 8);
+    if ( nullptr == pp ) {
         Napi::TypeError::New(env, "Conversion of double to memory failed")
           .ThrowAsJavaScriptException();
     }
 
-    Napi::Array returnValue = Napi::Array::New(env,8);
+    Napi::Array rv = Napi::Array::New(env,8);
     for ( int i=0; i<8; i++ ) {
-        returnValue[uint8_t(i)] = Napi::Number::New(env,buf[i]);
+        rv[uint8_t(i)] = Napi::Number::New(env,buf[i]);
     }
     
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -237,7 +276,7 @@ floathelper::convertDouble2Mem(const Napi::CallbackInfo& info)
 Napi::Number
 floathelper::convertMem2Single(const Napi::CallbackInfo& info)
 {
-    uint8_t buf[8];
+    uint8_t buf[4];
     Napi::Env env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsArray() ) {
@@ -257,9 +296,10 @@ floathelper::convertMem2Single(const Napi::CallbackInfo& info)
         }
     }
 
-    Napi::Number returnValue = Napi::Number::New(env, floathelper::mem2float(buf));
+    Napi::Number rv = 
+        Napi::Number::New(env, floathelper::mem2float(buf));
 
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -286,12 +326,12 @@ floathelper::convertSingle2Mem(const Napi::CallbackInfo& info)
           .ThrowAsJavaScriptException();
     }
 
-    Napi::Array returnValue = Napi::Array::New(env,4);
+    Napi::Array rv = Napi::Array::New(env,4);
     for ( int i=0; i<4; i++ ) {
-        returnValue[uint8_t(i)] = Napi::Number::New(env,buf[i]);
+        rv[uint8_t(i)] = Napi::Number::New(env,buf[i]);
     }
     
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -301,12 +341,23 @@ floathelper::convertSingle2Mem(const Napi::CallbackInfo& info)
 Napi::Number 
 floathelper::convertMemUInt2Double(const Napi::CallbackInfo& info)
 {
+    bool bSwap = false;
     uint8_t buf[8];
     Napi::Env env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsArray() ) {
-        Napi::TypeError::New(env, "Two arguments expected. Array and size expected")
+        Napi::TypeError::New(env, "One or two arguments expected. Array and bSwap")
           .ThrowAsJavaScriptException();
+    }
+
+    if ( 2 == info.Length() && !info[1].IsBoolean() ) {
+        Napi::TypeError::New(env, "Second argument should be bSwap (boolean)")
+          .ThrowAsJavaScriptException();
+    }
+
+    if ( 2 == info.Length() ) {
+        Napi::Boolean b  = info[1].As<Napi::Boolean>();
+        bSwap = b.ToBoolean();
     }
 
     // Get buffer
@@ -322,9 +373,9 @@ floathelper::convertMemUInt2Double(const Napi::CallbackInfo& info)
         }
     }
 
-    Napi::Number returnValue = Napi::Number::New(env, floathelper::memuint2double(buf,len));
+    Napi::Number rv = Napi::Number::New(env, floathelper::memuint2double(buf,len,bSwap));
 
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -334,12 +385,23 @@ floathelper::convertMemUInt2Double(const Napi::CallbackInfo& info)
 Napi::Number 
 floathelper::convertMemInt2Double(const Napi::CallbackInfo& info)
 {
+    bool bSwap = false;
     uint8_t buf[8];
     Napi::Env env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsArray() ) {
         Napi::TypeError::New(env, "Two arguments expected. Array and size expected")
           .ThrowAsJavaScriptException();
+    }
+
+    if ( 2 == info.Length() && !info[1].IsBoolean() ) {
+        Napi::TypeError::New(env, "Second argument should be bSwap (boolean)")
+          .ThrowAsJavaScriptException();
+    }
+
+    if ( 2 == info.Length() ) {
+        Napi::Boolean b  = info[1].As<Napi::Boolean>();
+        bSwap = b.ToBoolean();
     }
 
     // Get buffer
@@ -355,9 +417,9 @@ floathelper::convertMemInt2Double(const Napi::CallbackInfo& info)
         }
     }
 
-    Napi::Number returnValue = Napi::Number::New(env, floathelper::memint2double(buf,len));
+    Napi::Number rv = Napi::Number::New(env, floathelper::memint2double(buf,len,bSwap));
 
-    return returnValue;
+    return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -374,13 +436,24 @@ floathelper::HelloWrapped(const Napi::CallbackInfo& info)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// float2mem
+// Init
 //
 
 Napi::Object
 floathelper::Init(Napi::Env env, Napi::Object exports)
 {
     exports.Set("hello", Napi::Function::New(env, floathelper::HelloWrapped));
+
+    // http://svitlanamoiseyenko.com/2017/01/17/storing-of-floating-point-numbers-in-memory/
+    exports.Set("convertMem2Double", Napi::Function::New(env, floathelper::convertMem2Double));
+    exports.Set("convertDouble2Mem", Napi::Function::New(env, floathelper::convertDouble2Mem));
+    
+    exports.Set("convertMem2Single", Napi::Function::New(env, floathelper::convertMem2Single));
+    exports.Set("convertSingle2Mem", Napi::Function::New(env, floathelper::convertSingle2Mem));
+    
+    exports.Set("convertMemUInt2Double", Napi::Function::New(env, floathelper::convertMemUInt2Double));
+    exports.Set("convertMemInt2Double", Napi::Function::New(env, floathelper::convertMemInt2Double));
+
 
     return exports;
 }

@@ -7,42 +7,13 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug index.js",
+            "name": "Debug test.js",
             "preLaunchTask": "npm: build:dev",
             "program": "/usr/bin/node",
             "args": [
-               "/home/akhe/development/VSCP/node-canal/index.js"
-            ]
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug samples polling.js",
-            "preLaunchTask": "npm: build:dev",
-            "program": "/usr/bin/node",
-            "args": [
-               "/home/akhe/development/VSCP/node-canal/samples/polling.js"
-            ]
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug samples callback.js",
-            "preLaunchTask": "npm: build:dev",
-            "program": "/usr/bin/node",
-            "args": [
-               "/home/akhe/development/VSCP/node-canal/samples/callback.js"
-            ]
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug samples send.js",
-            "preLaunchTask": "npm: build:dev",
-            "program": "/usr/bin/node",
-            "args": [
-               "/home/akhe/development/VSCP/node-canal/samples/send.js"
+               "/home/akhe/development/VSCP/node-float-helpers/test/test.js"
             ]
         }
+
     ]
 }
