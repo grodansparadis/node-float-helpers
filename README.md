@@ -5,8 +5,6 @@
 
 # node-float-helpers
 
-<img src="https://vscp.org/images/logo.png" width="100">
-
 Some helper functionality fort applications (binary protocol handling for example) that have floating point values or integers of various lengths stored in memory.
 
 This is softwate that is part of the VSCP project. If you are new to VSCP you can find more info [here](https://www.vscp.org).
