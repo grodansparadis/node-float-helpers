@@ -1,6 +1,6 @@
 {
   "name": "node-float-helpers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Some floating point conversion helpers for node.js ",
   "main": "index.js",
   "gypfile": true,
